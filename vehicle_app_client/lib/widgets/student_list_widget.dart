@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import '../services/parent_communication_service.dart';
 
 class StudentListWidget extends StatelessWidget {
   final List<Map<String, dynamic>> students;
   final Function(Map<String, dynamic>) onDropOff;
+  final ParentCommunicationService _parentCommunicationService;
 
   const StudentListWidget({
     super.key,
     required this.students,
     required this.onDropOff,
-  });
+    required ParentCommunicationService parentCommunicationService,
+  }) : _parentCommunicationService = parentCommunicationService;
 
   void _showDropOffConfirmation(BuildContext context, Map<String, dynamic> student) {
     showDialog(
@@ -22,12 +25,23 @@ class StudentListWidget extends StatelessWidget {
             child: const Text('취소'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(context).pop();
+              
+              final String parentId = student['parentId'] ?? '';
+              final String studentName = student['name'] ?? '';
+              
+              await _parentCommunicationService.sendDropOffNotification(
+                parentId,
+                studentName,
+              );
+              
               onDropOff(student);
               
-              // 마지막 학생 하차 후 처리
-              if (students.isEmpty) {
+              // students 리스트가 업데이트될 때까지 잠시 대기
+              await Future.delayed(const Duration(milliseconds: 300));
+              
+              if (students.isEmpty && context.mounted) {
                 showDialog(
                   context: context,
                   barrierDismissible: false,
@@ -37,9 +51,8 @@ class StudentListWidget extends StatelessWidget {
                     actions: [
                       TextButton(
                         onPressed: () {
-                          // 모든 스택을 지우고 메인 화면으로 이동
                           Navigator.of(context).pushNamedAndRemoveUntil(
-                            '/',  // 메인 화면의 라우트 이름
+                            '/',
                             (route) => false,
                           );
                         },
@@ -59,6 +72,31 @@ class StudentListWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 리스트가 비어있는지 즉시 확인
+    if (students.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) => AlertDialog(
+            title: const Text('운행 종료'),
+            content: const Text('모든 학생이 하차했습니다.\n운행을 종료합니다.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/',
+                    (route) => false,
+                  );
+                },
+                child: const Text('확인'),
+              ),
+            ],
+          ),
+        );
+      });
+    }
+
     return Container(
       width: 200,
       padding: const EdgeInsets.all(8),
