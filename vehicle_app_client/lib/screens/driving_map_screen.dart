@@ -7,6 +7,7 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../models/vehicle.dart';
 import '../services/parent_communication_service.dart';
 import '../widgets/delay_notification_dialog.dart';
+import 'marker_list_screen.dart';
 
 class DrivingMapScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -133,6 +134,17 @@ class _DrivingMapScreenState extends State<DrivingMapScreen> {
             onPressed: _locationService.isPermissionGranted
                 ? _locationService.getCurrentLocation
                 : _locationService.requestLocationPermission,
+          ),
+          IconButton(
+            icon: const Icon(Icons.list),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MarkerListScreen(markerService: _markerService),
+                ),
+              );
+            },
           ),
         ],
       ),

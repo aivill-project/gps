@@ -15,6 +15,7 @@ class _AddMarkerScreenState extends State<AddMarkerScreen> {
   GoogleMapController? _mapController;
   Marker? _selectedMarker;
   final _titleController = TextEditingController();
+  bool _isMarkerCreationAllowed = true;
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +49,11 @@ class _AddMarkerScreenState extends State<AddMarkerScreen> {
             onMapCreated: (controller) => _mapController = controller,
             markers: _selectedMarker != null ? {_selectedMarker!} : {},
             onTap: (LatLng position) {
-              _showMarkerDialog(position);
+              if (_isMarkerCreationAllowed) {
+                print('Map tapped at: $position');
+                _showMarkerDialog(position);
+                _isMarkerCreationAllowed = false;
+              }
             },
           ),
         ],

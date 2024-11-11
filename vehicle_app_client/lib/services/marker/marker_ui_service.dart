@@ -6,38 +6,50 @@ import 'package:flutter/rendering.dart';
 import '../../main.dart';
 
 class MarkerUIService {
-  Future<String?> showMarkerNameDialog() async {
-    final TextEditingController controller = TextEditingController();
-
-    final result = await showDialog<String>(
-      context: navigatorKey.currentContext!,
-      builder: (context) => AlertDialog(
-        title: const Text('장소 이름 입력'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: '장소 이름을 입력하세요'),
-          onSubmitted: (value) => Navigator.pop(context, value),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
+  Future<String?> showMarkerNameDialog({required BuildContext context}) async {
+    return showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        final TextEditingController controller = TextEditingController();
+        
+        return WillPopScope(
+          onWillPop: () async => false,
+          child: AlertDialog(
+            title: const Text('장소 이름 입력'),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: '장소 이름을 입력하세요',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () {
+                  final text = controller.text.trim();
+                  if (text.isNotEmpty) {
+                    Navigator.of(context).pop(text);
+                  }
+                },
+                child: const Text('확인'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('확인'),
-          ),
-        ],
-      ),
+        );
+      },
     );
-
-    controller.dispose();
-    return result;
   }
 
   Future<bool?> showDeleteConfirmDialog() async {
+    final context = navigatorKey.currentContext;
+    if (context == null) return null;
+
     return showDialog<bool>(
-      context: navigatorKey.currentContext!,
+      context: context,
       builder: (context) => AlertDialog(
         title: const Text('마커 삭제'),
         content: const Text('이 마커를 삭제하시겠습니까?'),

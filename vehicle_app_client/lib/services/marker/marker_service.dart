@@ -5,6 +5,9 @@ import 'dart:math' as math;
 import '../location/location_service.dart';
 import 'marker_ui_service.dart';
 import '../../../main.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../../../config/api_config.dart';
 
 class MarkerService {
   final LocationService locationService;
@@ -16,7 +19,8 @@ class MarkerService {
   final double movementSpeed = 0.00002;
   final ValueNotifier<Set<Circle>> _markerCircles = ValueNotifier({});
   static const double markerRadius = 100.0; // 100m 반경
-
+  final String apiUrl = '${ApiConfig.baseUrl}/markers'; // 서버 URL
+  
   MarkerService({required this.locationService})
       : _markerUIService = MarkerUIService();
 
@@ -30,15 +34,26 @@ class MarkerService {
   }
 
   void onWheelClick(Offset offset) async {
-    if (_mapController == null) return;
+    print('휠 클릭 감지: $offset');
+    if (_mapController == null) {
+      print('맵 컨트롤러가 초기화되지 않았습니다.');
+      return;
+    }
 
-    final ScreenCoordinate screenCoordinate = ScreenCoordinate(
-      x: offset.dx.round(),
-      y: offset.dy.round(),
-    );
+    try {
+      final ScreenCoordinate screenCoordinate = ScreenCoordinate(
+        x: offset.dx.round(),
+        y: offset.dy.round(),
+      );
+      print('스크린 좌표 변환: $screenCoordinate');
 
-    final LatLng position = await _mapController!.getLatLng(screenCoordinate);
-    _createMarker(position);
+      final LatLng position = await _mapController!.getLatLng(screenCoordinate);
+      print('위치 좌표 변환: $position');
+      
+      await _createMarker(position);
+    } catch (e) {
+      print('마커 생성 중 오류 발생: $e');
+    }
   }
 
   void onRightClick(Offset offset) async {
@@ -53,15 +68,41 @@ class MarkerService {
     _startMovement(position);
   }
 
-  void _createMarker(LatLng position) async {
-    final String? markerName = await _markerUIService.showMarkerNameDialog();
-    if (markerName == null || markerName.isEmpty) return;
-
-    final markerId = MarkerId(DateTime.now().toString());
-
+  Future<void> _createMarker(LatLng position) async {
+    print('마커 생성 시도: $position');
     try {
-      final customMarkerIcon =
-          await _markerUIService.createCustomMarkerIcon(markerName);
+      final String? markerName = await _markerUIService.showMarkerNameDialog(
+        context: navigatorKey.currentContext!
+      );
+      
+      if (markerName == null || markerName.trim().isEmpty) {
+        print('마커 생성 취소됨');
+        return;
+      }
+
+      // 서버에 마커 데이터 저장
+      final response = await http.post(
+        Uri.parse('$apiUrl/markers'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'position': {
+            'latitude': position.latitude,
+            'longitude': position.longitude,
+          },
+          'title': markerName,
+          'description': '', // 필요한 경우 설명 추가
+        }),
+      );
+
+      if (response.statusCode != 201) {
+        throw Exception('마커 저장 실패: ${response.body}');
+      }
+
+      final markerData = jsonDecode(response.body);
+      final markerId = MarkerId(markerData['_id']);
+      
+      BitmapDescriptor customMarkerIcon = await _markerUIService.createCustomMarkerIcon(markerName);
+
       final newMarker = Marker(
         markerId: markerId,
         position: position,
@@ -69,9 +110,13 @@ class MarkerService {
         onTap: () => _showMarkerInfo(markerId, markerName, position),
       );
 
-      _markers.value = {..._markers.value, newMarker};
+      final newMarkers = {..._markers.value};
+      newMarkers.add(newMarker);
+      _markers.value = newMarkers;
+      print('마커 생성 완료: $markerName');
+      
     } catch (e) {
-      _createDefaultMarker(markerId, position, markerName);
+      print('마커 생성 실패: $e');
     }
   }
 
@@ -157,22 +202,24 @@ class MarkerService {
     });
   }
 
-  void _createDefaultMarker(MarkerId markerId, LatLng position, String name) {
-    final newMarker = Marker(
-      markerId: markerId,
-      position: position,
-      icon: BitmapDescriptor.defaultMarker,
-      onTap: () => _showMarkerInfo(markerId, name, position),
-    );
-    _markers.value = {..._markers.value, newMarker};
-  }
-
   void _deleteMarker(MarkerId markerId) async {
     final bool? shouldDelete = await _markerUIService.showDeleteConfirmDialog();
     if (shouldDelete == true) {
-      final newMarkers = Set<Marker>.from(_markers.value);
-      newMarkers.removeWhere((marker) => marker.markerId == markerId);
-      _markers.value = newMarkers;
+      try {
+        final response = await http.delete(
+          Uri.parse('$apiUrl/markers/${markerId.value}'),
+        );
+
+        if (response.statusCode != 200) {
+          throw Exception('마커 삭제 실패: ${response.body}');
+        }
+
+        final newMarkers = Set<Marker>.from(_markers.value);
+        newMarkers.removeWhere((marker) => marker.markerId == markerId);
+        _markers.value = newMarkers;
+      } catch (e) {
+        print('마커 삭제 실패: $e');
+      }
     }
   }
 
@@ -215,5 +262,95 @@ class MarkerService {
 
   void dispose() {
     _movementTimer?.cancel();
+  }
+
+  Future<void> loadSavedMarkers() async {
+    try {
+      final response = await http.get(Uri.parse('$apiUrl/markers'));
+      
+      if (response.statusCode != 200) {
+        throw Exception('마커 로딩 실패: ${response.body}');
+      }
+
+      final List<dynamic> markersJson = jsonDecode(response.body);
+      final newMarkers = <Marker>{};
+      
+      for (var markerData in markersJson) {
+        final customMarkerIcon = await _markerUIService.createCustomMarkerIcon(markerData['title']);
+        
+        newMarkers.add(Marker(
+          markerId: MarkerId(markerData['_id']),
+          position: LatLng(
+            markerData['position']['latitude'],
+            markerData['position']['longitude'],
+          ),
+          icon: customMarkerIcon,
+          onTap: () => _showMarkerInfo(
+            MarkerId(markerData['_id']),
+            markerData['title'],
+            LatLng(
+              markerData['position']['latitude'],
+              markerData['position']['longitude'],
+            ),
+          ),
+        ));
+      }
+      
+      _markers.value = newMarkers;
+    } catch (e) {
+      print('마커 로딩 실패: $e');
+    }
+  }
+
+  Future<void> createMarker(LatLng position, BuildContext context) async {
+    print('마커 생성 시도: $position');
+    try {
+      final String? markerName = await _markerUIService.showMarkerNameDialog(
+        context: context
+      );
+      
+      if (markerName == null || markerName.trim().isEmpty) {
+        print('마커 생성 취소됨');
+        return;
+      }
+
+      // 서버에 마커 데이터 저장
+      final response = await http.post(
+        Uri.parse('$apiUrl/markers'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'position': {
+            'latitude': position.latitude,
+            'longitude': position.longitude,
+          },
+          'title': markerName,
+          'description': '', // 필요한 경우 설명 추가
+        }),
+      );
+
+      if (response.statusCode != 201) {
+        throw Exception('마커 저장 실패: ${response.body}');
+      }
+
+      final markerData = jsonDecode(response.body);
+      final markerId = MarkerId(markerData['_id']);
+      
+      BitmapDescriptor customMarkerIcon = await _markerUIService.createCustomMarkerIcon(markerName);
+
+      final newMarker = Marker(
+        markerId: markerId,
+        position: position,
+        icon: customMarkerIcon,
+        onTap: () => _showMarkerInfo(markerId, markerName, position),
+      );
+
+      final newMarkers = {..._markers.value};
+      newMarkers.add(newMarker);
+      _markers.value = newMarkers;
+      print('마커 생성 완료: $markerName');
+      
+    } catch (e) {
+      print('마커 생성 실패: $e');
+    }
   }
 }

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as google_maps;
 import '../services/location/location_service.dart';
 import '../services/marker/marker_service.dart';
 import '../widgets/map_widget.dart';
 import '../widgets/dialogs/vehicle_selection_dialog.dart';
 import '../widgets/header_container.dart';
+import 'marker_list_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -47,12 +50,24 @@ class MapScreenState extends State<MapScreen> {
                     ? _locationService.getCurrentLocation
                     : _locationService.requestLocationPermission,
               ),
+              IconButton(
+                icon: const Icon(Icons.list),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MarkerListScreen(markerService: _markerService),
+                    ),
+                  );
+                },
+              ),
             ],
           ),
           Expanded(
             child: MapWidget(
               locationService: _locationService,
               markerService: _markerService,
+              onTap: (position) => _markerService.createMarker(position, context),
             ),
           ),
         ],

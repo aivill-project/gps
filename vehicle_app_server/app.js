@@ -12,6 +12,7 @@ const io = require('socket.io')(http, {
 
 const vehicleRoutes = require('./src/routes/vehicle.routes');
 const studentRoutes = require('./src/routes/student.routes');
+const markerRoutes = require('./src/routes/marker.routes');
 
 connectDB();
 
@@ -21,6 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/markers', markerRoutes);
 // Socket.IO 연결 처리
 io.on('connection', (socket) => {
   console.log('클라이언트가 연결되었습니다.');

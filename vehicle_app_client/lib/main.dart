@@ -12,7 +12,7 @@ late io.Socket socket;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  connectToServer(); // 앱 실행 시 소켓 연결 초기화
+  connectToServer();
   runApp(const VehicleTrackingApp());
 }
 
@@ -40,6 +40,7 @@ class VehicleTrackingApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: '태권월드',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),

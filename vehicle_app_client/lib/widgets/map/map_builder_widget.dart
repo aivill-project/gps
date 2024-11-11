@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart' as latlong2;
 import '../../services/location/location_service.dart';
 import '../../services/marker/marker_service.dart';
 
@@ -7,10 +8,11 @@ class MapBuilderWidget extends StatelessWidget {
   final LocationService locationService;
   final MarkerService markerService;
   final bool isMoving;
-  final Set<Circle> circles;
+  final Set<latlong2.Circle> circles;
   final Set<Marker> markers;
   final Function(GoogleMapController) onMapCreated;
   final Function(CameraPosition) onCameraMove;
+  final Function(LatLng) onTap;
 
   const MapBuilderWidget({
     super.key,
@@ -21,6 +23,7 @@ class MapBuilderWidget extends StatelessWidget {
     required this.circles,
     required this.onMapCreated,
     required this.onCameraMove,
+    required this.onTap,
   });
 
   @override
@@ -53,6 +56,7 @@ class MapBuilderWidget extends StatelessWidget {
           markers: markers,
           onMapCreated: onMapCreated,
           onCameraMove: onCameraMove,
+          onTap: onTap,
           compassEnabled: true,
           mapToolbarEnabled: true,
           rotateGesturesEnabled: !isMoving,
