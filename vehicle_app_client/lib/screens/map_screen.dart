@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart' as google_maps;
 import '../services/location/location_service.dart';
 import '../services/marker/marker_service.dart';
 import '../widgets/map_widget.dart';
@@ -28,6 +26,7 @@ class MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+ 
     return Scaffold(
       body: Column(
         children: [
@@ -36,13 +35,18 @@ class MapScreenState extends State<MapScreen> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.directions_car, color: Colors.white),
-                onPressed: () => showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => VehicleSelectionDialog(
-                    onVehicleSelected: (_) {},
-                  ),
-                ),
+                onPressed: () {
+               
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => Builder(
+                      builder: (context) => VehicleSelectionDialog(
+                        onVehicleSelected: (_) {},
+                      ),
+                    ),
+                  );
+                },
               ),
               IconButton(
                 icon: const Icon(Icons.my_location, color: Colors.white),
@@ -53,10 +57,14 @@ class MapScreenState extends State<MapScreen> {
               IconButton(
                 icon: const Icon(Icons.list),
                 onPressed: () {
+             
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => MarkerListScreen(markerService: _markerService),
+                      builder: (context) {
+                     
+                        return MarkerListScreen(markerService: _markerService);
+                      },
                     ),
                   );
                 },
@@ -67,7 +75,6 @@ class MapScreenState extends State<MapScreen> {
             child: MapWidget(
               locationService: _locationService,
               markerService: _markerService,
-              onTap: (position) => _markerService.createMarker(position, context),
             ),
           ),
         ],

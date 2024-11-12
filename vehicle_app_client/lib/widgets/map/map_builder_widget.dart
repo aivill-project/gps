@@ -12,7 +12,7 @@ class MapBuilderWidget extends StatelessWidget {
   final Set<Marker> markers;
   final Function(GoogleMapController) onMapCreated;
   final Function(CameraPosition) onCameraMove;
-  final Function(LatLng) onTap;
+
 
   const MapBuilderWidget({
     super.key,
@@ -23,11 +23,12 @@ class MapBuilderWidget extends StatelessWidget {
     required this.circles,
     required this.onMapCreated,
     required this.onCameraMove,
-    required this.onTap,
+
   });
 
   @override
   Widget build(BuildContext context) {
+ 
     return ListenableBuilder(
       listenable: Listenable.merge([
         locationService.center,
@@ -36,6 +37,7 @@ class MapBuilderWidget extends StatelessWidget {
         markerService.markers,
       ]),
       builder: (context, _) {
+     
         final center = locationService.center.value;
         final locationCircles = locationService.circles.value;
         final markerCircles = markerService.markerCircles.value;
@@ -54,9 +56,12 @@ class MapBuilderWidget extends StatelessWidget {
           mapType: MapType.normal,
           circles: allCircles,
           markers: markers,
-          onMapCreated: onMapCreated,
+          onMapCreated: (GoogleMapController controller) {
+            onMapCreated(controller);
+            markerService.setMapController(controller);
+            markerService.loadSavedMarkers();
+          },
           onCameraMove: onCameraMove,
-          onTap: onTap,
           compassEnabled: true,
           mapToolbarEnabled: true,
           rotateGesturesEnabled: !isMoving,

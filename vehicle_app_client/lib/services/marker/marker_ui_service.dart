@@ -158,7 +158,12 @@ class MarkerUIService {
     );
 
     final BuildContext? context = navigatorKey.currentContext;
-    if (context == null) throw Exception('No context found');
+    if (context == null) {
+      print('No context found');
+      throw Exception('No context found');
+    }
+
+    final overlay = Overlay.of(context);
 
     final overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
@@ -172,7 +177,7 @@ class MarkerUIService {
       ),
     );
 
-    Overlay.of(context).insert(overlayEntry);
+    overlay.insert(overlayEntry);
     await Future.delayed(const Duration(milliseconds: 100));
 
     final RenderRepaintBoundary boundary = overlayEntry.mounted
